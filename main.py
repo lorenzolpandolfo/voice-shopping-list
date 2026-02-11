@@ -1,40 +1,16 @@
+import os
+
 from dotenv import load_dotenv
 from json import loads
-from datetime import datetime
-
 from faster_whisper import WhisperModel
-
-from google import genai
-from google.genai import types
-
 from anytype import create_anytype_object
+from groq_service import groq_agent
+import psutil
 
 load_dotenv()
 
-GEMINI_CONTEXT = f"""
-Você vai receber dados de compras, como:
-- uma breve descrição da compra
-- valor
-- data da compra (se não especificado, considere o dia atual: {datetime.now().isoformat()})
-
-Você deve coletar estes dados e retornar em estilo JSON, conforme o modelo:
-{{
-  "name": "Caneca" (avalie conforme a descrição o nome do item comprado),
-  "description": "Compra de caneca na Amazon",
-  "price": 10,
-  "date": "YYYY-MM-DDTHH:MM:SSZ"
-}}
-
-Você deve retornar APENAS o conteúdo do JSON, sem codeblock!
-Você pode melhorar a descrição para ficar mais legível
-Caso especificado uma data de compra relativa, por exemplo "ontem" ou "semana passada", você deve considerar em relação ao dia atual especificado.
-"""
-
 model = WhisperModel("small", device="cpu", compute_type="int8")
-client = genai.Client()
 
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
-FALLBACK_GEMINI_MODEL = "gemini-2.0-flash"
 
 def transcribe_and_print(filename: str) -> str:
     segments, _ = model.transcribe(filename, language="pt")
@@ -51,24 +27,10 @@ def transcribe_and_print(filename: str) -> str:
 
 def buy_data_to_json(buy_speech_to_text_data: str):
     try:
-        response = client.models.generate_content(
-            model=DEFAULT_GEMINI_MODEL,
-            config=types.GenerateContentConfig(
-                system_instruction=GEMINI_CONTEXT),
-            contents=buy_speech_to_text_data
-        )
+        return groq_agent(buy_speech_to_text_data)
 
-    except Exception:
-        print("[WARN] Usando modelo fallback do Gemini")
-        response = client.models.generate_content(
-            model=FALLBACK_GEMINI_MODEL,
-            config=types.GenerateContentConfig(
-                system_instruction=GEMINI_CONTEXT),
-            contents=buy_speech_to_text_data
-        )
-
-    response = response.text
-    return response
+    except Exception as e:
+        print("[AGENT ERROR] Erro ao chamar o agente: ", e)
 
 
 def parse_json(json_data: str):
@@ -84,12 +46,29 @@ def process_buy_audio_to_json_obj(filename: str):
     json_data = buy_data_to_json(speech_to_text)
     return parse_json(json_data)
 
-# Exemplos
 
-obj_amazon = process_buy_audio_to_json_obj("compra amazon.ogg")
-create_anytype_object(obj_amazon)
+def find_process_on_port(port):
+    for proc in psutil.process_iter(['pid', 'name']):
+        try:
+            for conn in proc.net_connections(kind='tcp'):
+                if str(conn.laddr.port) == str(port):
+                    return proc
 
-obj_ml = process_buy_audio_to_json_obj("compra mercadolivre.ogg")
-create_anytype_object(obj_ml)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    return None
 
+def validate_anytype_server_is_running():
+    if not find_process_on_port(os.getenv("ANYTYPE_PORT")):
+        raise EnvironmentError("O processo do anytype não está rodando na porta definida no .env")
+
+    else:
+        print("[!] [ANYTYPE] Servidor local do Anytype rodando!")
+
+
+if __name__ == "__main__":
+    validate_anytype_server_is_running()
+
+    obj_amazon = process_buy_audio_to_json_obj("fone_ouvido.ogg")
+    create_anytype_object(obj_amazon)
 
