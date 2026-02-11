@@ -1,0 +1,19 @@
+[project]
+name = "pythonproject"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "lorenzopandolfo",email = "lorenzopandolfo2004@gmail.com"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "faster-whisper (>=1.2.1,<2.0.0)",
+    "google-genai (>=1.62.0,<2.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)",
+    "anytype-client (>=0.2.1,<0.3.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
