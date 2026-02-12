@@ -1,0 +1,4 @@
+
+
+class GroqException(Exception):
+    pass
