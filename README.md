@@ -1,34 +1,67 @@
 # Voice Shopping List
 
+Um **bot do Telegram** que recebe áudios para anotar compras e salva como tabela no **Google Planilhas** ou **Anytype**.
 
-Um **bot do Telegram** que recebe áudios para anotar compras e salva como tabela no Anytype.
-
+---
 
 ## Como funciona
-O áudio é convertido para texto utilizando o `faster_whisper`, enviado para uma LLM utilizando o **Groq**, para organização dos dados em JSON, e por fim, salvo no **Anytype**, em formato de tabela.
 
-O bot contém um filtro de `user_id` para não processar respostas de outros.
+1. O áudio é convertido para texto usando `faster_whisper`
+2. O texto é enviado para uma LLM via **Groq**
+3. A LLM organiza os dados em formato JSON
+4. Os dados são salvos no **Anytype** ou no **Google Planilhas** como tabela
+
+O bot possui filtro de `user_id` para não processar mensagens de outros usuários do Telegram.
+
+---
 
 ## Setup
 
-- Instale as dependências:
-    ```bash
-    poetry install
-    ```
+1. Instale as dependências:
 
-- Renomeie o `.env-example` e adicione as api keys do **Groq**, **Anytype** e **Telegram**.
+```bash
+poetry install
+```
 
-- Inicie o Anytype localmente (ou em um servidor, contanto que ajuste no `.env`)
+2. Renomeie o `.env-example` para `.env` e adicione as chaves de API do:
+   - Groq  
+   - Telegram  
+   - Anytype (opcional)  
+   - Google Planilhas (opcional)
 
-- Por fim, rode o projeto:
-    ```bash
-    poetry run python main.py
-    ```
-- Para testar, envie um áudio ao bot no telegram.
+3. Opcional: Inicie o Anytype localmente (ou em um servidor, ajustando o `.env`)
 
-## Observações extras
+4. Execute o projeto:
 
-- É necessário fazer o registro do BOT pelo Telegram
-- É preciso estar com o Anytype rodando localmente (ou em um servidor)
-- O modelo de linguagem utilizado é o `llama-3.1-8b-instant`, com o plano free do Groq, mas pode ser alterado em `groq_service.py`
-- O prompt do modelo pode ser alterado em `ai_context.py`
+```bash
+poetry run python main.py
+```
+
+5. Envie um áudio para o bot no Telegram para testar.
+
+---
+
+## Observações
+
+- É necessário registrar o bot no Telegram.
+- O modelo utilizado é `llama-3.1-8b-instant` (plano free do Groq), podendo ser alterado em `groq_service.py`.
+- O prompt pode ser alterado em `ai_context.py`.
+
+---
+
+## Opcional: Setup Anytype
+
+- Manter o Anytype rodando localmente ou em um servidor
+- Ajustar as variáveis no `.env`
+
+---
+
+## Opcional: Setup Google Planilhas
+
+- Criar um projeto no Google Cloud  
+- Criar uma Service Account  
+- Gerar uma chave JSON para a Service Account  
+- Salvar o arquivo como `service_account.json` na raiz do projeto  
+- Ativar a Google Sheets API  
+- Compartilhar a planilha com o e-mail da Service Account (permissão de Editor)  
+- Definir as variáveis no `.env` conforme o `.env-example`

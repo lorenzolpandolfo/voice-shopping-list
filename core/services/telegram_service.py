@@ -11,6 +11,9 @@ from core.exceptions.groq_exception import GroqException
 from core.services.anytype_service import create_anytype_object
 from core.services.audio_service import transcribe, buy_data_to_json, \
     parse_json
+from core.services.google_service import save_data_to_spreadsheet
+from core.utils import is_integration_strategy_anytype, is_integration_strategy_spreadsheets, \
+    get_formatted_integration_strategy
 
 load_dotenv()
 
@@ -60,13 +63,31 @@ def process_audio_file(audio_file_path: str) -> dict:
     print(f"[AUDIO] Processando audio...")
     speech_to_text = transcribe(audio_file_path)
     raw_json_data = buy_data_to_json(speech_to_text)
-    json_obj = parse_json(raw_json_data)
+    payload = parse_json(raw_json_data)
 
-    print(f"[AUDIO] Salvando objeto JSON no Anytype...\n > {json_obj}\n")
-    create_anytype_object(json_obj)
+    process_data_integration(payload)
+
     print(f"[AUDIO] Apagando arquivo de áudio: {audio_file_path}")
     os.remove(audio_file_path)
-    return json_obj
+
+    return payload
+
+def process_data_integration(payload):
+    """Integrates to Anytype or Google Spreadsheets as configured in .env"""
+
+    if is_integration_strategy_anytype():
+        print(f"[ANYTYPE] Salvando objeto JSON no Anytype...\n > {payload}\n")
+        create_anytype_object(payload)
+        return
+
+    elif is_integration_strategy_spreadsheets():
+        print(f"[GOOGLE SPREADSHEETS] Salvando registro na tabela do Google Planilhas...\n > {payload}\n")
+        save_data_to_spreadsheet(payload)
+        return
+
+    else:
+        raise EnvironmentError("Invalid INTEGRATION_STRATEGY. Value must be anytype or spreadsheets. You can set it in the .env file.")
+
 
 def create_user_answer_text(saved_json_obj: dict) -> str:
     funny_interaction = random.randint(0, 3) == 0
@@ -90,7 +111,7 @@ def create_user_answer_text(saved_json_obj: dict) -> str:
     return f"""
 {greeting}! {emoji}
 
-Anotei o teu gasto no <b>Anytype</b>. Segue os dados:
+Anotei o teu gasto no <b>{get_formatted_integration_strategy()}</b>. Segue os dados:
 {buy_data}
 {funny_interaction}Até a próxima!
 """

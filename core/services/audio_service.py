@@ -7,6 +7,7 @@ from faster_whisper import WhisperModel
 
 from core.exceptions.groq_exception import GroqException
 from core.services.groq_service import groq_agent
+from core.utils import is_integration_strategy_anytype
 
 load_dotenv()
 
@@ -49,6 +50,10 @@ def has_process_running_on_port(port: int) -> bool:
     return False
 
 def validate_anytype_server_is_running():
+
+    if not is_integration_strategy_anytype():
+        return
+
     anytype_port = int(os.getenv("ANYTYPE_PORT"))
 
     if not has_process_running_on_port(anytype_port):
