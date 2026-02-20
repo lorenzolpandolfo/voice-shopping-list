@@ -45,6 +45,7 @@ poetry run python main.py
 
 - É necessário registrar o bot no Telegram.
 - O modelo utilizado é `llama-3.1-8b-instant` (plano free do Groq), podendo ser alterado em `groq_service.py`.
+- Caso o `WHISPER_MODEL` não seja definido em `.env`, será utilizado o modelo `whisper-large-v3-turbo` pelo Groq, no plano free.
 - O prompt pode ser alterado em `ai_context.py`.
 
 ---

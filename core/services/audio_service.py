@@ -15,6 +15,9 @@ WHISPER_MODEL = os.getenv("WHISPER_MODEL")
 
 
 def transcribe(filename: str) -> str:
+    if whisper_model is None:
+        raise EnvironmentError("WHISPER_MODEL is None. Check if it is defined in the `.env` file.")
+
     segments, _ = whisper_model.transcribe(filename, language="pt")
     full_text = ""
 
@@ -63,5 +66,5 @@ def validate_anytype_server_is_running():
         print("[ANYTYPE] Anytype está rodando na porta ", anytype_port)
 
 
-whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8") if WHISPER_MODEL is not None else None
 

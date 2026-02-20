@@ -21,3 +21,7 @@ def get_formatted_integration_strategy():
 
     else:
         return "Google Planilhas"
+
+
+def is_groq_whisper():
+    return not os.getenv("WHISPER_MODEL")

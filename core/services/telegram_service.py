@@ -12,8 +12,9 @@ from core.services.anytype_service import create_anytype_object
 from core.services.audio_service import transcribe, buy_data_to_json, \
     parse_json
 from core.services.google_service import save_data_to_spreadsheet
+from core.services.groq_service import groq_whisper
 from core.utils import is_integration_strategy_anytype, is_integration_strategy_spreadsheets, \
-    get_formatted_integration_strategy
+    get_formatted_integration_strategy, is_groq_whisper
 
 load_dotenv()
 
@@ -61,7 +62,8 @@ async def receive_and_process_audio_file(update: Update, context: ContextTypes.D
 
 def process_audio_file(audio_file_path: str) -> dict:
     print(f"[AUDIO] Processando audio...")
-    speech_to_text = transcribe(audio_file_path)
+    speech_to_text = process_whisper_strategy(audio_file_path)
+
     raw_json_data = buy_data_to_json(speech_to_text)
     payload = parse_json(raw_json_data)
 
@@ -71,6 +73,12 @@ def process_audio_file(audio_file_path: str) -> dict:
     os.remove(audio_file_path)
 
     return payload
+
+def process_whisper_strategy(audio_file_path: str):
+    if is_groq_whisper():
+        return groq_whisper(audio_file_path)
+
+    return transcribe(audio_file_path)
 
 def process_data_integration(payload):
     """Integrates to Anytype or Google Spreadsheets as configured in .env"""
