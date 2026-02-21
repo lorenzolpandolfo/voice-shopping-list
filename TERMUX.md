@@ -29,10 +29,12 @@ Dentro do Ubuntu, execute:
 
 ```
 apt update && apt upgrade -y
-apt install build-essential python3-venv python3-pip curl pkg-config libssl-dev -y
+apt install git build-essential python3-venv python3-pip curl pkg-config libssl-dev -y
 ```
 
-# 4. Atualizar Rust (para compilar dependências do projeto)
+# 4. Opcional: Atualizar Rust
+
+Esta etapa é opcional e deve ser executada caso ocorram erros ao compilar algumas dependências. É recomendado pular essa etapa se não for necessário.
 
 Dentro do Ubuntu, execute:
 
@@ -47,12 +49,14 @@ cargo --version
 
 # 5. Clonar o projeto, Configurar Python e Poetry
 
-A etapa de instalação de dependências (`poetry install`) pode demorar, porque alguns pacotes, como o `cryptography`, `psutils`, entre outros, precisam ser compilados. Por isso, o Rust foi instalado acima.
+A etapa de instalação de dependências (`poetry install`) pode demorar, porque alguns pacotes, como o `cryptography`, `psutils`, entre outros, talvez precisam ser compilados. 
 
 Dentro do Ubuntu, execute:
 
 ```
 git clone https://github.com/lorenzolpandolfo/voice-shopping-list
+
+cd voice-shopping-list/
 
 python3 -m venv venv
 source venv/bin/activate
