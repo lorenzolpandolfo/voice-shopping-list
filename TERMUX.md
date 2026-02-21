@@ -2,7 +2,23 @@
 
 Para rodar o projeto em um servidor mobile que roda pelo Termux, siga os passos abaixo.
 
+___
+
+# Instalação automatizada
+
+No Termux, rode o comando para iniciar o instalador:
+
+```
+curl -fsSL https://raw.githubusercontent.com/lorenzolpandolfo/voice-shopping-list/main/install-termux.sh | bash
+```
+
+E aguarde a instalação finalizar.
+
 ---
+
+# Etapas manuais
+
+Caso preferir ou o script automatizado apresentar problemas, siga as etapas manuais abaixo:
 
 # 1. Preparar Termux
 
