@@ -48,7 +48,7 @@ if ! command -v poetry > /dev/null 2>&1; then
 fi
 
 if [ ! -f poetry.lock ] || [ ! -d .venv ]; then
-  poetry install > /dev/null
+  poetry install --without dev > /dev/null
 fi
 "
 

@@ -1,8 +1,16 @@
-from core.services.audio_service import validate_anytype_server_is_running
-from core.services.telegram_service import app
+import logging
+
+from src.services.telegram_service import app
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    validate_anytype_server_is_running()
-    print("[!] 🤖 BOT iniciado e processando...")
+    logger.info("🤖 Bot iniciado!")
     app.run_polling()
-

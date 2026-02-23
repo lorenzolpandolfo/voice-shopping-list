@@ -1,4 +1,0 @@
-
-
-class AnytypeException(Exception):
-    pass

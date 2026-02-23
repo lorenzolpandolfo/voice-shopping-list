@@ -65,8 +65,6 @@ cargo --version
 
 # 5. Clonar o projeto, Configurar Python e Poetry
 
-A etapa de instalação de dependências (`poetry install`) pode demorar, porque alguns pacotes, como o `cryptography`, `psutils`, entre outros, talvez precisam ser compilados. 
-
 Dentro do Ubuntu, execute:
 
 ```
@@ -95,7 +93,7 @@ if [ ! -d venv ]; then
     source venv/bin/activate
     pip install --upgrade pip
     pip install poetry
-    poetry install
+    poetry install --without dev
 else
     source venv/bin/activate
 fi
