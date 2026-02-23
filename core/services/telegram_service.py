@@ -19,7 +19,7 @@ from core.utils import is_integration_strategy_anytype, is_integration_strategy_
 load_dotenv()
 
 TELEGRAM_BOT_API_KEY = os.getenv("TELEGRAM_BOT_API_KEY")
-TELEGRAM_MY_USER_ID = os.getenv("TELEGRAM_MY_USER_ID")
+TELEGRAM_MY_USER_ID = int(os.getenv("TELEGRAM_MY_USER_ID"))
 
 GREETINGS = ["Olá", "Salve", "Boa pai", "Fala padrinho", "Fala meu velho", "Daí, meu"]
 EMOIJS = ["😎", "😉", "🤑"]
@@ -125,7 +125,7 @@ Anotei o teu gasto no <b>{get_formatted_integration_strategy()}</b>. Segue os da
 """
 
 app = ApplicationBuilder().token(TELEGRAM_BOT_API_KEY).build()
-filter_user_id = filters.User(user_id=TELEGRAM_BOT_API_KEY)
+filter_user_id = filters.User(user_id=TELEGRAM_MY_USER_ID)
 
-audio_handler = MessageHandler(filter_user_id | filters.VOICE | filters.AUDIO, receive_and_process_audio_file)
+audio_handler = MessageHandler(filter_user_id & (filters.VOICE | filters.AUDIO), receive_and_process_audio_file)
 app.add_handler(audio_handler)
