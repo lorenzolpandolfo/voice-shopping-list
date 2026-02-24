@@ -1,68 +1,29 @@
 # Voice Shopping List
 
-Um **bot do Telegram** que recebe áudios para anotar compras e salva como tabela no **Google Planilhas** ou **Anytype**.
+Um **bot do Telegram** que recebe áudios para anotar compras e salva como tabela no **Google Planilhas**.
 
 ---
 
-## Como funciona
+# Setup
 
-1. O áudio é convertido para texto usando `faster_whisper`
-2. O texto é enviado para uma LLM via **Groq**
-3. A LLM organiza os dados em formato JSON
-4. Os dados são salvos no **Anytype** ou no **Google Planilhas** como tabela
+Abaixo segue um guia de como configurar o projeto.
 
-O bot possui filtro de `user_id` para não processar mensagens de outros usuários do Telegram.
+## Configurando Google Cloud
 
----
+### Criando um projeto do Google Cloud
+1. Será necessário criar um projeto gratuíto no [Google Cloud](https://console.cloud.google.com/)
 
-## Setup
+### Permitir criação de chave da Conta de Serviço
+1. Acesse [IAM](https://console.cloud.google.com/iam-admin/iam)
+2. Selecione no topo da página, ao lado direito de Google Cloud, a sua organização pessoal
+   - A organização deve ter sido criada com o free-trial do Google Cloud. O nome é parecido com `seuemail-org`
+   - Se não encontrar, tente clicar nos 3 pontinhos no canto direito da janela de selecionar projetos e escolha **IAM/Permissões**. Deve carregar a página de permissões da organização
+3. Defina a permissão **Administrador da política da organização** no seu usuário
+4. Em [Políticas da Organização](https://console.cloud.google.com/iam-admin/orgpolicies/list) encontre a flag `iam.managed.disableServiceAccountApiKeyCreation` e desative-a
 
-1. Instale as dependências:
+### Criando a Conta de Serviço
+1. Acesse [IAM > Contas de Serviço](https://console.cloud.google.com/iam-admin/serviceaccounts) e selecione o projeto
+2. Clique em Criar conta de serviço, defina o nome e pule as etapas de **Permissão** e **Principais com acesso**
+3. **Guarde o email da conta de serviço**, ele será utilizado depois, para dar acesso ao bot na sua Google Planilha
+4. Em `Ações > Gerenciar chaves > Adicionar chave > Criar nova chave`, crie uma chave de acesso JSON. Não a compartilhe com ninguém!
 
-```bash
-poetry install
-```
-
-2. Renomeie o `.env-example` para `.env` e adicione as chaves de API do:
-   - Groq  
-   - Telegram  
-   - Anytype (opcional)  
-   - Google Planilhas (opcional)
-
-3. Opcional: Inicie o Anytype localmente (ou em um servidor, ajustando o `.env`)
-
-4. Execute o projeto:
-
-```bash
-poetry run python main.py
-```
-
-5. Envie um áudio para o bot no Telegram para testar.
-
----
-
-## Observações
-
-- É necessário registrar o bot no Telegram.
-- O modelo utilizado é `llama-3.1-8b-instant` (plano free do Groq), podendo ser alterado em `groq_service.py`.
-- Caso o `WHISPER_MODEL` não seja definido em `.env`, será utilizado o modelo `whisper-large-v3-turbo` pelo Groq, no plano free.
-- O prompt pode ser alterado em `ai_context.py`.
-
----
-
-## Opcional: Setup Anytype
-
-- Manter o Anytype rodando localmente ou em um servidor
-- Ajustar as variáveis no `.env`
-
----
-
-## Opcional: Setup Google Planilhas
-
-- Criar um projeto no Google Cloud  
-- Criar uma Service Account  
-- Gerar uma chave JSON para a Service Account  
-- Salvar o arquivo como `service_account.json` na raiz do projeto  
-- Ativar a Google Sheets API  
-- Compartilhar a planilha com o e-mail da Service Account (permissão de Editor)  
-- Definir as variáveis no `.env` conforme o `.env-example`

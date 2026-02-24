@@ -1,0 +1,14 @@
+{
+  "telegram_user_id": {
+    "spreadsheet_id": "id",
+    "spreadsheet_tab": "tab",
+    "service_account_path": "accounts/your_service_account.json"
+
+  },
+  "another_telegram_user_id": {
+    "spreadsheet_id": "id",
+    "spreadsheet_tab": "tab",
+    "service_account_path": "accounts/your_service_account.json"
+  }
+}
+
