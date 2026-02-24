@@ -208,3 +208,5 @@ __marimo__/
 
 users_data.json
 *_sac.json
+client_secret.json
+user_tokens/*

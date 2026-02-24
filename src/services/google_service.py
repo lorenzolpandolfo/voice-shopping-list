@@ -1,30 +1,32 @@
 import gspread
-from google.oauth2.service_account import Credentials
+from src.services.google_oauth_service import get_user_credentials
 from datetime import datetime
-
-
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 _client_cache = {}
 
 
-def get_client(user_id: str, service_account_path: str):
-    if user_id not in _client_cache:
-        creds = Credentials.from_service_account_file(
-            service_account_path,
-            scopes=SCOPES,
-        )
-        _client_cache[user_id] = gspread.authorize(creds)
+def get_client(user_id: str):
+    """Retorna o client do user_id se existir no cache. Senão, consulta a credencial e salva no cache."""
 
-    return _client_cache[user_id]
+    if user_id in _client_cache:
+        return _client_cache[user_id]
+
+    creds = get_user_credentials(user_id)
+    if not creds:
+        raise Exception("Usuário não autenticado. Use /auth primeiro.")
+
+    client = gspread.authorize(creds)
+    _client_cache[user_id] = client
+    return client
 
 
 def save_data_to_spreadsheet(payload: dict, user_id: str, user_config: dict):
+    """Recebe um payload, user_id e user_config. Salva o payload conforme os dados do usuário."""
+
     spreadsheet_id = user_config["spreadsheet_id"]
     spreadsheet_tab = user_config["spreadsheet_tab"]
-    service_account_path = user_config["service_account_path"]
 
-    client = get_client(user_id, service_account_path)
+    client = get_client(user_id)
 
     sheet = client.open_by_key(spreadsheet_id).worksheet(spreadsheet_tab)
 
