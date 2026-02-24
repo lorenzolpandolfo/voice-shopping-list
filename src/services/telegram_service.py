@@ -53,7 +53,7 @@ async def _validate_can_process_audio(
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
-                "Você precisa se autorizar para que eu consiga acessar sua planilha do Google.\n"
+                "Você precisa se autenticar para que eu consiga acessar sua planilha do Google.\n"
                 "Utilize o comando <code>/auth</code> e siga as etapas."
             ),
             parse_mode="HTML",
