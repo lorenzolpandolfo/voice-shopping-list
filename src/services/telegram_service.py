@@ -169,9 +169,10 @@ async def auth_command(update, context):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=(
-            f"Para autorizar o acesso na sua planilha do Google, acesse:\n{verification_url}\n\n"
-            f"E digite o código: <code>{user_code}</code>\n\n"
-            f"Depois, envie <b>pronto</b> para eu finalizar a sua autenticação."
+            f"Para autorizar o acesso na sua <b>Google Planilha</b>, copie o código abaixo:\n"
+            f"\n<code>{user_code}</code>\n\n"
+            f"E acesse o link:\n{verification_url}\n\n"
+            f"Ao finalizar, envie <b>pronto</b> para eu concluir a sua autenticação."
         ),
         parse_mode="HTML",
     )
@@ -185,7 +186,15 @@ async def finish_auth_on_message(update, context):
 
     user_id = str(update.effective_user.id)
     try:
-        finish_device_auth(user_id)
+        credentials = finish_device_auth(user_id)
+
+        if credentials is None:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Não encontrei a sua solicitação de autenticação.",
+            )
+            return
+
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="🎉 Autorização concluída! Agora posso acessar sua planilha.",

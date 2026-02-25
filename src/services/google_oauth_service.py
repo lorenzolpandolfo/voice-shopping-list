@@ -33,7 +33,7 @@ def start_device_auth(user_id: str) -> tuple[str, str]:
     return response["user_code"], response["verification_url"]
 
 
-def finish_device_auth(user_id: str):
+def finish_device_auth(user_id: str) -> Credentials | None:
     """Finaliza o processo de autenticação de um token salvo em _user_device_codes."""
 
     token_to_finish_data = _user_device_codes_to_finish.get(user_id)
