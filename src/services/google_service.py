@@ -1,5 +1,5 @@
 import gspread
-from src.services.google_oauth_service import get_user_credentials
+from src.services.google_oauth_service import get_user_credentials_google
 from datetime import datetime
 
 _client_cache = {}
@@ -11,7 +11,7 @@ def get_client(user_id: str):
     if user_id in _client_cache:
         return _client_cache[user_id]
 
-    creds = get_user_credentials(user_id)
+    creds = get_user_credentials_google(user_id)
     if not creds:
         raise Exception("Usuário não autenticado. Use /auth primeiro.")
 

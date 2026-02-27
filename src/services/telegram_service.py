@@ -22,13 +22,14 @@ from src.services.user_data_service import get_user_data_by_id
 from src.services.google_oauth_service import (
     start_device_auth,
     finish_device_auth,
-    get_user_credentials,
+    get_user_credentials_google,
 )
 
 load_dotenv()
 logger = getLogger(__name__)
 TELEGRAM_BOT_API_KEY = os.getenv("TELEGRAM_BOT_API_KEY")
 
+REPO_URL = "https://github.com/lorenzolpandolfo/voice-shopping-list"
 GREETINGS = ["Olá", "Salve", "Boa pai", "Fala padrinho", "Fala meu velho", "Daí, meu"]
 EMOIJS = ["😎", "😉", "🤑"]
 FUNNY_INTERACTIONS = [
@@ -38,29 +39,37 @@ FUNNY_INTERACTIONS = [
 ]
 
 
-async def _validate_can_process_audio(
-    context, update, user_config, credentials
-) -> bool:
+async def _validate_has_google_credentials(context, update) -> bool:
 
-    if not user_config:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="😢 Foi mal, mas eu não tô configurado pra te responder",
-        )
-        return False
+    user_id = str(update.effective_user.id)
+    credentials = get_user_credentials_google(user_id)
 
-    if not credentials:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=(
-                "Você precisa se autenticar para que eu consiga acessar sua planilha do Google.\n"
-                "Utilize o comando <code>/auth</code> e siga as etapas."
-            ),
-            parse_mode="HTML",
-        )
-        return False
+    if credentials:
+        return True
 
-    return True
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=(
+            "Você precisa se autenticar para que eu consiga acessar sua planilha do Google.\n"
+            "Utilize o comando <code>/auth</code> e siga as etapas."
+        ),
+        parse_mode="HTML",
+    )
+    return False
+
+
+async def _validate_user_data(context, update) -> dict | None:
+    user_id = str(update.effective_user.id)
+    data = get_user_data_by_id(user_id)
+
+    if data:
+        return data
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="😢 Foi mal, mas eu não tô configurado pra te responder",
+    )
+    return None
 
 
 async def receive_and_process_audio_file(
@@ -76,10 +85,11 @@ async def receive_and_process_audio_file(
         return
 
     user_id = str(update.effective_user.id)
-    user_config = get_user_data_by_id(user_id)
-    credentials = get_user_credentials(user_id)
+    user_config = await _validate_user_data(context, update)
+    if not user_config:
+        return
 
-    if not await _validate_can_process_audio(context, update, user_config, credentials):
+    if not await _validate_has_google_credentials(context, update):
         return
 
     file = await context.bot.get_file(file_id)
@@ -164,6 +174,10 @@ def create_user_answer_text(saved_json_obj: dict) -> str:
 
 async def auth_command(update, context):
     user_id = str(update.effective_user.id)
+
+    if not await _validate_user_data(context, update):
+        return
+
     user_code, verification_url = start_device_auth(user_id)
 
     await context.bot.send_message(
@@ -179,6 +193,9 @@ async def auth_command(update, context):
 
 
 async def finish_auth_on_message(update, context):
+    if not await _validate_user_data(context, update):
+        return
+
     text_message: str = update.message.text
 
     if text_message.lower().strip() != "pronto":
@@ -206,12 +223,65 @@ async def finish_auth_on_message(update, context):
         )
 
 
+async def start_command(update, context):
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=(
+            f"🤖✌ Olá, eu sou o Balance Bot! O robô de <a href='{REPO_URL}'>código aberto</a> feito para organizar a sua vida financeira. 🤑\n\n"
+            f"Eu recebo áudios de compras, transcrevo-os para texto e organizo na sua Google Planilhas.\n\n"
+            f"É muito simples! Experimente dizer: <i>Comprei morango por 10 reais hoje.</i>\n\n"
+            f"Vou anotar o <b>título</b> da sua compra, uma <b>descrição</b>, o <b>preço</b>, <b>categoria</b> e <b>data da compra</b>.\n\nPode deixar comigo! 😎"
+        ),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+    )
+
+    user_id = str(update.effective_user.id)
+    user_data = get_user_data_by_id(user_id)
+    credentials = get_user_credentials_google(user_id)
+
+    if not user_data:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "Verifiquei que você não é um usuário registrado.\n\n"
+                "Entre em contato com o meu mantenedor para liberar o seu acesso."
+            ),
+            parse_mode="HTML",
+        )
+        return
+
+    if not credentials:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "Verifiquei que você já é um usuário registrado, que top! 🥳\n\n"
+                "Mas não encontrei a sua autenticação com o Google Planilhas.\n\n"
+                "Para realizar, envie <code>/auth</code>."
+            ),
+            parse_mode="HTML",
+        )
+        return
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=(
+            "Verifiquei que você já é um usuário registrado, que top! 🥳\n\n"
+            "E também encontrei a sua autenticação com o Google Planilhas!\n\n"
+            "Você já está liberado para enviar áudios."
+        ),
+        parse_mode="HTML",
+    )
+
+
 app = ApplicationBuilder().token(TELEGRAM_BOT_API_KEY).build()
 
 app.add_handler(
     MessageHandler(filters.VOICE | filters.AUDIO, receive_and_process_audio_file)
 )
 app.add_handler(CommandHandler("auth", auth_command))
+app.add_handler(CommandHandler("start", start_command))
 app.add_handler(
     MessageHandler(filters.TEXT & (~filters.COMMAND), finish_auth_on_message)
 )

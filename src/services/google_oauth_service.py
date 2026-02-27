@@ -72,7 +72,7 @@ def finish_device_auth(user_id: str) -> Credentials | None:
     return creds
 
 
-def get_user_credentials(user_id: str) -> Credentials | None:
+def get_user_credentials_google(user_id: str) -> Credentials | None:
     """Retorna as credenciais do Google do usuário. Se estiverem expiradas, renova."""
 
     token_path = os.path.join(TOKEN_DIR, f"{user_id}.json")
