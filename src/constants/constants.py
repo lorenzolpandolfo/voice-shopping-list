@@ -1,9 +1,8 @@
 COLUMN_DATE_INDEX = 4
 COLUMN_CATEGORY_INDEX = 3
 COLUMN_PRICE_INDEX = 1
+COLUMN_NAME_INDEX = 0
 
-MASK_TOTAL_SPENT = "TOTAL_SPENT"
-MASK_CATEGORIES_PRICES = "CATEGORIES_PRICES"
 MASK_CURRENT_DATE = "MASK_CURRENT_DATE"
 
 DEFAULT_TIMEZONE = "America/Sao_Paulo"
@@ -46,12 +45,4 @@ Rules:
 - Return ONLY valid JSON.
 - Do NOT include code blocks or explanations.
 - All text fields must be in Brazilian Portuguese.
-"""
-
-MONTHLY_ANSWER_MASK = f"""
-<b>Resumo do mês</b>
-Total de gastos: {MASK_TOTAL_SPENT}
-
-<b>Gastos por categorias</b>
-{MASK_CATEGORIES_PRICES}
 """

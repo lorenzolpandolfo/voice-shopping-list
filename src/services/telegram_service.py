@@ -219,11 +219,17 @@ async def resume_command(update, context):
         return
 
     month = _resolve_month(context.args)
-    answer = get_monthly_resume(user_config, user_id, month)
+    answer_general, answer_top_costs = get_monthly_resume(user_config, user_id, month)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=answer,
+        text=answer_general,
+        parse_mode="HTML",
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=answer_top_costs,
         parse_mode="HTML",
     )
 
