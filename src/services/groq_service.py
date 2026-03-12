@@ -1,7 +1,8 @@
 import os
 from datetime import datetime
 from logging import getLogger
-
+from zoneinfo import ZoneInfo
+import locale
 from dotenv import load_dotenv
 
 
@@ -10,10 +11,13 @@ from groq import Groq
 from src.constants.constants import (
     AGENT_CONTEXT,
     MASK_CURRENT_DATE,
+    DEFAULT_TIMEZONE,
+    DEFAULT_LOCALE,
 )
 
 load_dotenv()
 logger = getLogger(__name__)
+locale.setlocale(locale.LC_TIME, DEFAULT_LOCALE)
 
 client = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
@@ -48,7 +52,8 @@ def groq_buy_data_to_json(content: str):
             {
                 "role": "user",
                 "content": AGENT_CONTEXT.replace(
-                    MASK_CURRENT_DATE, datetime.now().isoformat()
+                    MASK_CURRENT_DATE,
+                    datetime.now(ZoneInfo(DEFAULT_TIMEZONE)).isoformat(),
                 )
                 + content,
             }

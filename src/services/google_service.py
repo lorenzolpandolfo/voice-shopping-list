@@ -7,7 +7,6 @@ from src.constants.constants import (
     MASK_TOTAL_SPENT,
     MASK_CATEGORIES_PRICES,
     COLUMN_CATEGORY_INDEX,
-    BRAZIL_TIMEZONE,
 )
 from src.services.google_oauth_service import get_user_credentials_google
 from datetime import datetime
@@ -46,7 +45,7 @@ def save_data_to_spreadsheet(payload: dict, user_id: str, user_config: dict):
     sheet = _get_sheet(user_config, user_id)
 
     date = payload["date"]
-    dt = datetime.fromisoformat(date.replace("Z", BRAZIL_TIMEZONE))
+    dt = datetime.fromisoformat(date)
     formatted_date = dt.strftime("%Y-%m-%d %H:%M:%S")
 
     row = [

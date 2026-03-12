@@ -166,7 +166,7 @@ def create_user_answer_text(saved_json_obj: dict) -> str:
     buy_name = saved_json_obj.get("name")
     buy_category = saved_json_obj.get("category")
     buy_price = saved_json_obj.get("price")
-    raw_date = saved_json_obj.get("date").replace("Z", "+00:00")
+    raw_date = saved_json_obj.get("date")
     buy_date = datetime.fromisoformat(raw_date).strftime("%d de %B de %Y às %H:%M")
 
     buy_data = (
