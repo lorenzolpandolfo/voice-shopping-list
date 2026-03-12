@@ -7,7 +7,7 @@ from logging import getLogger
 
 from dotenv import load_dotenv
 from google.auth.exceptions import RefreshError
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     ApplicationBuilder,
     ContextTypes,
@@ -16,7 +16,8 @@ from telegram.ext import (
     filters,
 )
 
-from src.services.google_service import save_data_to_spreadsheet
+from src.constants.constants import MONTHS
+from src.services.google_service import save_data_to_spreadsheet, get_monthly_resume
 from src.services.groq_service import groq_buy_data_to_json, groq_whisper
 from src.services.user_data_service import get_user_data_by_id
 from src.services.google_oauth_service import (
@@ -58,7 +59,7 @@ async def _validate_has_google_credentials(context, update) -> bool:
     return False
 
 
-async def _validate_user_data(context, update) -> dict | None:
+async def _validate_and_get_user_data(context, update) -> dict | None:
     user_id = str(update.effective_user.id)
     data = get_user_data_by_id(user_id)
 
@@ -85,7 +86,7 @@ async def receive_and_process_audio_file(
         return
 
     user_id = str(update.effective_user.id)
-    user_config = await _validate_user_data(context, update)
+    user_config = await _validate_and_get_user_data(context, update)
     if not user_config:
         return
 
@@ -131,15 +132,26 @@ def process_audio_file(audio_file_path: str, user_id: str, user_config: dict) ->
     logger.info("[Audio] Processando áudio...")
     speech_to_text = groq_whisper(audio_file_path)
 
+    payload = process_groq_and_save_to_spreadsheet(speech_to_text, user_id, user_config)
+
+    logger.info(f"[Audio] Apagando arquivo de áudio: {audio_file_path}")
+    os.remove(audio_file_path)
+
+    return payload
+
+
+def process_groq_and_save_to_spreadsheet(
+    speech_to_text: str, user_id: str, user_config: dict
+) -> dict:
+    """
+    Recebe o texto da compra, envia para o Groq, que transforma em um JSON, e salva-o no Google Planilhas.
+    Retorna o payload salvo.
+    """
     raw_json_data = groq_buy_data_to_json(speech_to_text)
     payload = loads(raw_json_data)
 
     logger.info("[Spreadsheets] Salvando registro na tabela do Google Planilhas...")
     save_data_to_spreadsheet(payload, user_id, user_config)
-
-    logger.info(f"[Audio] Apagando arquivo de áudio: {audio_file_path}")
-    os.remove(audio_file_path)
-
     return payload
 
 
@@ -175,7 +187,14 @@ def create_user_answer_text(saved_json_obj: dict) -> str:
 async def auth_command(update, context):
     user_id = str(update.effective_user.id)
 
-    if not await _validate_user_data(context, update):
+    if not await _validate_and_get_user_data(context, update):
+        return
+
+    if await _validate_has_google_credentials(context, update):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Já tenho a sua autenticação do Google registrada.",
+        )
         return
 
     user_code, verification_url = start_device_auth(user_id)
@@ -192,8 +211,47 @@ async def auth_command(update, context):
     )
 
 
+async def resume_command(update, context):
+    user_id = str(update.effective_user.id)
+    user_config = await _validate_and_get_user_data(context, update)
+
+    if not user_config:
+        return
+
+    month = _resolve_month(context.args)
+    answer = get_monthly_resume(user_config, user_id, month)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=answer,
+        parse_mode="HTML",
+    )
+
+
+def _resolve_month(args):
+    now = datetime.now()
+
+    if not args:
+        return now.month
+
+    arg = args[0].lower()
+
+    if arg == "last":
+        return 12 if now.month == 1 else now.month - 1
+
+    if arg.isdigit():
+        m = int(arg)
+        if 1 <= m <= 12:
+            return m
+
+    if arg in MONTHS:
+        return MONTHS[arg]
+
+    return now.month
+
+
 async def finish_auth_on_message(update, context):
-    if not await _validate_user_data(context, update):
+    if not await _validate_and_get_user_data(context, update):
         return
 
     text_message: str = update.message.text
@@ -275,13 +333,85 @@ async def start_command(update, context):
     )
 
 
+async def note_command(update, context):
+    user_id = str(update.effective_user.id)
+    user_config = await _validate_and_get_user_data(context, update)
+    if not user_config:
+        return
+
+    if not await _validate_has_google_credentials(context, update):
+        return
+
+    text_message: str = update.message.text.replace("/note", "").strip().lower()
+
+    if text_message == "":
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Você precisa especificar o gasto para eu anotar. Exemplo:\n<code>/note comprei morango por 10 reais hoje</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    saved_json_obj: dict = process_groq_and_save_to_spreadsheet(
+        text_message, user_id, user_config
+    )
+    success_answer = create_user_answer_text(saved_json_obj)
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id, text=success_answer, parse_mode="HTML"
+    )
+
+
+async def help_command(update, context):
+    if not await _validate_and_get_user_data(context, update):
+        return
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=(
+            "🤖✌ Alguém aí tá precisando de uma ajuda? 🤑\n\n"
+            "<b>Conta e Autenticação</b>\n"
+            "Para checar o status da sua conta e autenticação, use\n"
+            "<code>/start</code>\n\n\n"
+            "<b>Gastos Mensais</b>\n"
+            "Quer uma visão geral dos <b>gastos durante um mês</b>? Use:\n"
+            "<code>/resume</code>\n\n"
+            "e eu te digo o <b>seu gasto total</b> e <b>gastos por categorias</b>.\n\n"
+            "Utilize <b>números</b> ou as <b>3 letras do mês em português</b> para retornar os gastos de um "
+            "mês específico.\n\nPor exemplo:\n"
+            "<code>/resume 2</code> ou <code>/resume fev</code> para checar os gastos de <b>fevereiro</b>.\n\n\n"
+            "<b>Anotar Gasto</b>\n"
+            "Me envie um áudio falando o que você comprou, o preço e quando. Eu vou anotar para você na sua Google Planilha!\n\n\n"
+            "<b>Anotar Gasto por Texto</b>\n"
+            "Não pode utilizar o microfone no momento mas lembrou de uma compra? Utilize:\n<code>/note morango por 10 "
+            "reais</code>\n\nE eu anoto para você!"
+        ),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+    )
+
+
+async def _setup_commands(application):
+    commands = [
+        BotCommand("start", "Verificar seu status"),
+        BotCommand("auth", "Autenticar-se"),
+        BotCommand("resume", "Resumo dos gastos mensais"),
+        BotCommand("help", "Explicação dos comandos"),
+        BotCommand("note", "Anotar gasto em texto"),
+    ]
+    await application.bot.set_my_commands(commands)
+
+
 app = ApplicationBuilder().token(TELEGRAM_BOT_API_KEY).build()
 
 app.add_handler(
     MessageHandler(filters.VOICE | filters.AUDIO, receive_and_process_audio_file)
 )
 app.add_handler(CommandHandler("auth", auth_command))
+app.add_handler(CommandHandler("resume", resume_command))
 app.add_handler(CommandHandler("start", start_command))
+app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("note", note_command))
 app.add_handler(
     MessageHandler(filters.TEXT & (~filters.COMMAND), finish_auth_on_message)
 )
+app.post_init = _setup_commands

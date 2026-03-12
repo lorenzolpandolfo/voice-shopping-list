@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from logging import getLogger
 
 from dotenv import load_dotenv
@@ -6,7 +7,10 @@ from dotenv import load_dotenv
 
 from groq import Groq
 
-from src.constants.ai_context import AGENT_CONTEXT
+from src.constants.constants import (
+    AGENT_CONTEXT,
+    MASK_CURRENT_DATE,
+)
 
 load_dotenv()
 logger = getLogger(__name__)
@@ -43,7 +47,10 @@ def groq_buy_data_to_json(content: str):
         messages=[
             {
                 "role": "user",
-                "content": AGENT_CONTEXT + content,
+                "content": AGENT_CONTEXT.replace(
+                    MASK_CURRENT_DATE, datetime.now().isoformat()
+                )
+                + content,
             }
         ],
         model=MODEL,
