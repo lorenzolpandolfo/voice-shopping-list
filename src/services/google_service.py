@@ -145,7 +145,7 @@ def _format_category_prices(category_totals: dict[str, float]) -> str:
     lines = []
 
     for category, total in category_totals.items():
-        lines.append(f" • <b>{category}</b>: {float_to_real_str(total)}")
+        lines.append(f" •  <b>{category}</b>: {float_to_real_str(total)}")
 
     return "\n".join(lines)
 
@@ -158,7 +158,7 @@ def _format_category_percentages(
     for category, total in category_totals.items():
         percent = (total / total_spent) * 100 if total_spent else 0
 
-        lines.append(f" • <b>{category}</b>: {percent:.1f}%")
+        lines.append(f" •  <b>{category}</b>: {percent:.1f}%")
 
     return "\n".join(lines)
 
@@ -173,7 +173,7 @@ def _format_top_items(
         lines.append(f"\n<b>{category}</b>")
 
         for name, price in items:
-            lines.append(f" • {name}: {float_to_real_str(price)}")
+            lines.append(f" •  {name}: {float_to_real_str(price)}")
 
     return "\n".join(lines)
 
