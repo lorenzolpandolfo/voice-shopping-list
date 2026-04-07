@@ -14,6 +14,7 @@ from logging import getLogger
 _client_cache = {}
 logger = getLogger(__name__)
 
+YEAR_LENGTH = 4
 
 def _get_client(user_id: str):
     """Retorna o client do user_id se existir no cache. Senão, consulta a credencial e salva no cache."""
@@ -88,7 +89,15 @@ def _filter_rows_by_month(rows: list[list[str]], month: int) -> list[list[str]]:
 
     for row in rows:
         try:
-            buy_date = datetime.strptime(row[COLUMN_DATE_INDEX], "%d/%m/%Y %H:%M:%S")
+            date: str = row[COLUMN_DATE_INDEX].replace("-", "/")
+
+            invalid_date_format = len(date.split("/")[0]) == YEAR_LENGTH
+
+            if invalid_date_format:
+                date = fix_datetime(date)
+                logger.warning(f"Data em formato inválido: {date} Corrigindo para {date}")
+
+            buy_date = datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
         except ValueError as e:
             logger.error("Erro ao realizar parse da data: %s", e)
             continue
@@ -220,4 +229,7 @@ def float_to_real_str(num: float) -> str:
 
 
 def str_to_float(data: str) -> float:
-    return float(data.replace("R$", "").replace(",", ".").strip())
+    return float(data.replace("R$", "").replace(".","").replace(",", ".").strip())
+
+def fix_datetime(value):
+    return datetime.strptime(value, "%Y/%m/%d %H:%M:%S").strftime("%d/%m/%Y %H:%M:%S")

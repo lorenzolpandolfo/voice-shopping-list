@@ -219,19 +219,27 @@ async def resume_command(update, context):
         return
 
     month = _resolve_month(context.args)
-    answer_general, answer_top_costs = get_monthly_resume(user_config, user_id, month)
+    try:
+        answer_general, answer_top_costs = get_monthly_resume(user_config, user_id, month)
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=answer_general,
-        parse_mode="HTML",
-    )
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=answer_general,
+            parse_mode="HTML",
+        )
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=answer_top_costs,
-        parse_mode="HTML",
-    )
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=answer_top_costs,
+            parse_mode="HTML",
+        )
+    except Exception as e:
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Desculpe, mas houve um erro ao retornar o seu resumo mensal.\n\nDetalhes do erro:\n{e}",
+            parse_mode="HTML",
+        )
 
 
 def _resolve_month(args):
