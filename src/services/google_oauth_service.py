@@ -1,17 +1,16 @@
-import os
 import json
 
 import requests
 from google.auth.transport import requests as greq
 from google.oauth2.credentials import Credentials
 
+from src.api.model.user_model import User
+from src.api.repository.user_repository import UserRepository
+
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 START_AUTH_URL = "https://oauth2.googleapis.com/device/code"
 FINISH_AUTH_URL = "https://oauth2.googleapis.com/token"
-TOKEN_DIR = "user_tokens"
 
-
-os.makedirs(TOKEN_DIR, exist_ok=True)
 
 with open("client_secret.json") as f:
     data = json.load(f)["installed"]
@@ -19,6 +18,8 @@ with open("client_secret.json") as f:
     _client_secret = data["client_secret"]
 
 _user_device_codes_to_finish = {}
+
+user_repo = UserRepository()
 
 
 def start_device_auth(user_id: str) -> tuple[str, str]:
@@ -65,9 +66,13 @@ def finish_device_auth(user_id: str) -> Credentials | None:
         scopes=SCOPES,
     )
 
-    token_path = os.path.join(TOKEN_DIR, f"{user_id}.json")
-    with open(token_path, "w") as f:
-        f.write(creds.to_json())
+    user = user_repo.find_by_id(user_id)
+
+    if not user:
+        raise Exception("Usuário não autorizado para cadastro")
+
+    user.token = creds.to_json()
+    user_repo.update(user)
 
     return creds
 
@@ -75,16 +80,19 @@ def finish_device_auth(user_id: str) -> Credentials | None:
 def get_user_credentials_google(user_id: str) -> Credentials | None:
     """Retorna as credenciais do Google do usuário. Se estiverem expiradas, renova."""
 
-    token_path = os.path.join(TOKEN_DIR, f"{user_id}.json")
+    user: User | None = user_repo.find_by_id(user_id)
 
-    if not os.path.exists(token_path):
+    if user is None or not user.token:
         return None
 
-    creds: Credentials = Credentials.from_authorized_user_file(token_path, SCOPES)
+    creds: Credentials = Credentials.from_authorized_user_info(
+        json.loads(user.token), SCOPES
+    )
 
     if creds.expired and creds.refresh_token:
         creds.refresh(greq.Request())
-        with open(token_path, "w") as f:
-            f.write(creds.to_json())
+
+        user.token = creds.to_json()
+        user_repo.update(user)
 
     return creds

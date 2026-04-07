@@ -1,6 +1,7 @@
 import gspread
 from gspread.utils import ValueInputOption
 
+from src.api.model.user_model import User
 from src.constants.constants import (
     COLUMN_DATE_INDEX,
     COLUMN_PRICE_INDEX,
@@ -15,6 +16,7 @@ _client_cache = {}
 logger = getLogger(__name__)
 
 YEAR_LENGTH = 4
+
 
 def _get_client(user_id: str):
     """Retorna o client do user_id se existir no cache. Senão, consulta a credencial e salva no cache."""
@@ -31,18 +33,18 @@ def _get_client(user_id: str):
     return client
 
 
-def _get_sheet(user_config: dict, user_id: str):
-    spreadsheet_id = user_config["spreadsheet_id"]
-    spreadsheet_tab = user_config["spreadsheet_tab"]
+def _get_sheet(user: User, user_id: str):
+    spreadsheet_id = user.spreadsheet_id
+    spreadsheet_tab = user.spreadsheet_tab
 
     client = _get_client(user_id)
     return client.open_by_key(spreadsheet_id).worksheet(spreadsheet_tab)
 
 
-def save_data_to_spreadsheet(payload: dict, user_id: str, user_config: dict):
+def save_data_to_spreadsheet(payload: dict, user_id: str, user: User):
     """Recebe um payload, user_id e user_config. Salva o payload conforme os dados do usuário."""
 
-    sheet = _get_sheet(user_config, user_id)
+    sheet = _get_sheet(user, user_id)
 
     date = payload["date"]
     dt = datetime.fromisoformat(date)
@@ -58,8 +60,8 @@ def save_data_to_spreadsheet(payload: dict, user_id: str, user_config: dict):
     sheet.append_row(row, value_input_option=ValueInputOption.user_entered)
 
 
-def get_monthly_resume(user_config: dict, user_id: str, month: int) -> tuple[str, str]:
-    sheet = _get_sheet(user_config, user_id)
+def get_monthly_resume(user: User, user_id: str, month: int) -> tuple[str, str]:
+    sheet = _get_sheet(user, user_id)
     rows = sheet.get_all_values()[1:]
 
     monthly_rows = _filter_rows_by_month(rows, month)
@@ -95,7 +97,9 @@ def _filter_rows_by_month(rows: list[list[str]], month: int) -> list[list[str]]:
 
             if invalid_date_format:
                 date = fix_datetime(date)
-                logger.warning(f"Data em formato inválido: {date} Corrigindo para {date}")
+                logger.warning(
+                    f"Data em formato inválido: {date} Corrigindo para {date}"
+                )
 
             buy_date = datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
         except ValueError as e:
@@ -229,7 +233,8 @@ def float_to_real_str(num: float) -> str:
 
 
 def str_to_float(data: str) -> float:
-    return float(data.replace("R$", "").replace(".","").replace(",", ".").strip())
+    return float(data.replace("R$", "").replace(".", "").replace(",", ".").strip())
+
 
 def fix_datetime(value):
     return datetime.strptime(value, "%Y/%m/%d %H:%M:%S").strftime("%d/%m/%Y %H:%M:%S")

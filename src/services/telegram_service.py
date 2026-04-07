@@ -1,6 +1,7 @@
 import os
 import random
 from datetime import datetime
+from functools import wraps
 from json import loads
 from logging import getLogger
 
@@ -16,10 +17,11 @@ from telegram.ext import (
     filters,
 )
 
+from src.api.model.user_model import User
+from src.api.repository.user_repository import UserRepository
 from src.constants.constants import MONTHS
 from src.services.google_service import save_data_to_spreadsheet, get_monthly_resume
 from src.services.groq_service import groq_buy_data_to_json, groq_whisper
-from src.services.user_data_service import get_user_data_by_id
 from src.services.google_oauth_service import (
     start_device_auth,
     finish_device_auth,
@@ -39,14 +41,34 @@ FUNNY_INTERACTIONS = [
     "Tá cheio da grana em 💸💰",
 ]
 
+user_repo = UserRepository()
 
-async def _validate_has_google_credentials(context, update) -> bool:
+
+def send_typing_action(func):
+    """Sends typing action while processing func command."""
+
+    @wraps(func)
+    async def command_func(update, context, *args, **kwargs):
+        await context.bot.send_chat_action(
+            chat_id=update.effective_message.chat_id, action="typing"
+        )
+        return await func(update, context, *args, **kwargs)
+
+    return command_func
+
+
+async def _validate_has_google_credentials(
+    context, update, send_message_on_error: bool = True
+) -> bool:
 
     user_id = str(update.effective_user.id)
     credentials = get_user_credentials_google(user_id)
 
     if credentials:
         return True
+
+    if not send_message_on_error:
+        return False
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -59,12 +81,18 @@ async def _validate_has_google_credentials(context, update) -> bool:
     return False
 
 
-async def _validate_and_get_user_data(context, update) -> dict | None:
+async def _validate_and_get_user(
+    context, update, send_message_on_error: bool = True
+) -> User | None:
     user_id = str(update.effective_user.id)
-    data = get_user_data_by_id(user_id)
 
-    if data:
-        return data
+    user = user_repo.find_by_id(user_id)
+
+    if user:
+        return user
+
+    if not send_message_on_error:
+        return None
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -73,6 +101,7 @@ async def _validate_and_get_user_data(context, update) -> dict | None:
     return None
 
 
+@send_typing_action
 async def receive_and_process_audio_file(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
@@ -86,7 +115,7 @@ async def receive_and_process_audio_file(
         return
 
     user_id = str(update.effective_user.id)
-    user_config = await _validate_and_get_user_data(context, update)
+    user_config = await _validate_and_get_user(context, update)
     if not user_config:
         return
 
@@ -184,13 +213,16 @@ def create_user_answer_text(saved_json_obj: dict) -> str:
     )
 
 
+@send_typing_action
 async def auth_command(update, context):
     user_id = str(update.effective_user.id)
 
-    if not await _validate_and_get_user_data(context, update):
+    if not await _validate_and_get_user(context, update, send_message_on_error=False):
         return
 
-    if await _validate_has_google_credentials(context, update):
+    if await _validate_has_google_credentials(
+        context, update, send_message_on_error=False
+    ):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Já tenho a sua autenticação do Google registrada.",
@@ -211,16 +243,17 @@ async def auth_command(update, context):
     )
 
 
+@send_typing_action
 async def resume_command(update, context):
     user_id = str(update.effective_user.id)
-    user_config = await _validate_and_get_user_data(context, update)
+    user = await _validate_and_get_user(context, update)
 
-    if not user_config:
+    if not user:
         return
 
     month = _resolve_month(context.args)
     try:
-        answer_general, answer_top_costs = get_monthly_resume(user_config, user_id, month)
+        answer_general, answer_top_costs = get_monthly_resume(user, user_id, month)
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -234,7 +267,6 @@ async def resume_command(update, context):
             parse_mode="HTML",
         )
     except Exception as e:
-
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=f"Desculpe, mas houve um erro ao retornar o seu resumo mensal.\n\nDetalhes do erro:\n{e}",
@@ -264,8 +296,9 @@ def _resolve_month(args):
     return now.month
 
 
+@send_typing_action
 async def finish_auth_on_message(update, context):
-    if not await _validate_and_get_user_data(context, update):
+    if not await _validate_and_get_user(context, update):
         return
 
     text_message: str = update.message.text
@@ -295,6 +328,7 @@ async def finish_auth_on_message(update, context):
         )
 
 
+@send_typing_action
 async def start_command(update, context):
 
     await context.bot.send_message(
@@ -310,10 +344,11 @@ async def start_command(update, context):
     )
 
     user_id = str(update.effective_user.id)
-    user_data = get_user_data_by_id(user_id)
+    user = user_repo.find_by_id(user_id)
+
     credentials = get_user_credentials_google(user_id)
 
-    if not user_data:
+    if not user:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
@@ -347,9 +382,10 @@ async def start_command(update, context):
     )
 
 
+@send_typing_action
 async def note_command(update, context):
     user_id = str(update.effective_user.id)
-    user_config = await _validate_and_get_user_data(context, update)
+    user_config = await _validate_and_get_user(context, update)
     if not user_config:
         return
 
@@ -375,8 +411,9 @@ async def note_command(update, context):
     )
 
 
+@send_typing_action
 async def help_command(update, context):
-    if not await _validate_and_get_user_data(context, update):
+    if not await _validate_and_get_user(context, update):
         return
 
     await context.bot.send_message(
