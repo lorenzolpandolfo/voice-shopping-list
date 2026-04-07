@@ -32,7 +32,6 @@ set -e
 
 if [ ! -d ~/$PROJECT_NAME ]; then
   git clone $REPO_URL > /dev/null
-  git checkout minimal-google-spreadsheets > /dev/null
 fi
 
 cd ~/$PROJECT_NAME

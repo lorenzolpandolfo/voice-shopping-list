@@ -28,11 +28,12 @@ Abaixo segue um guia de como configurar o projeto.
 
 1. Renomeie o `.env-example` para `.env` 
 2. Preencha os dados com as chaves de API do [Groq](https://groq.com/) e do [Telegram Bot](https://core.telegram.org/bots/tutorial#getting-ready)
-3. Renomeie o `users_data_example.json` para `users_data.json` e preencha os dados:
+3. Renomeie o `script_example.json` para `script.json` e preencha os dados:
    - `spreadsheet_id` com o id da Google Planilha
    - `spreadsheet_tab` com o nome da aba da planilha (no final da página, geralmente **Página1** por padrão, pode ser alterado)
    - `telegram_user_id` com o id do seu usuário no Telegram.
      - Para conferir, acesse o `@userinfobot` no Telegram e envie `/start`
+4. Rode o `migrate.py` com `poetry run python src/api/migrate.py` para rodar o `script.sql` no banco de dados.
 
 
 # Iniciar o projeto
