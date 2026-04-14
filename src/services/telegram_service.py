@@ -82,7 +82,7 @@ def retry_on_error(retries=3, delay=3, exceptions=(Exception,)):
                     else:
                         await context.bot.send_message(
                             chat_id=update.effective_chat.id,
-                            text=f"Desculpe, mas houve um erro ao executar o comando.\n\nDetalhes do erro:\n{e}",
+                            text=f"Desculpe, mas houve um erro ao executar o comando.\n\nDetalhes:\n{e}",
                             parse_mode="HTML",
                         )
 
@@ -233,6 +233,12 @@ def process_groq_and_save_to_spreadsheet(
     """
     raw_json_data = groq_buy_data_to_json(speech_to_text, msg_date)
     payload = loads(raw_json_data)
+
+    price = payload["price"]
+    if price <= 0:
+        raise ValueError(
+            f"Não pude anotar o seu gasto porque o preço é inválido: {price} reais"
+        )
 
     logger.info("[Spreadsheets] Salvando registro na tabela do Google Planilhas...")
     save_data_to_spreadsheet(payload, user_id, user)
