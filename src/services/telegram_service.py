@@ -58,21 +58,28 @@ def send_typing_action(func):
     return command_func
 
 
-def retry_on_error(retries=3, delay=1, exceptions=(Exception,)):
+def retry_on_error(retries=3, delay=3, exceptions=(Exception,)):
     def decorator(func):
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(update, context, *args, **kwargs):
             last_exc = None
 
             for attempt in range(retries):
                 try:
-                    return await func(*args, **kwargs)
+                    return await func(update, context, *args, **kwargs)
                 except exceptions as e:
                     last_exc = e
-                    logger.error(f"attempt {attempt + 1} failed: {e}")
+                    logger.error(f"attempt {attempt + 1} failed: {e}\n")
 
                     if attempt < retries - 1:
                         await asyncio.sleep(delay)
+
+                    else:
+                        await context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text=f"Desculpe, mas houve um erro ao executar o comando.\n\nDetalhes do erro:\n{e}",
+                            parse_mode="HTML",
+                        )
 
             raise last_exc
 
@@ -133,15 +140,22 @@ async def receive_and_process_audio_file(
     if update.message.voice:
         file_id = update.message.voice.file_id
         ext = "ogg"
+        if update.message.voice.duration >= 10:
+            raise ValueError("o áudio não deve exceder 10 segundos de duração.")
+
     elif update.message.audio:
         file_id = update.message.audio.file_id
         ext = "mp3"
+
+        if update.message.audio.duration >= 10:
+            raise ValueError("o áudio não deve exceder 10 segundos de duração.")
+
     else:
         return
 
     user_id = str(update.effective_user.id)
-    user_config = await _validate_and_get_user(context, update)
-    if not user_config:
+    user = await _validate_and_get_user(context, update)
+    if not user:
         return
 
     if not await _validate_has_google_credentials(context, update):
@@ -154,30 +168,25 @@ async def receive_and_process_audio_file(
     await file.download_to_drive(audio_file_path)
 
     try:
-        saved_json_obj: dict = process_audio_file(audio_file_path, user_id, user_config)
+        saved_json_obj: dict = process_audio_file(audio_file_path, user_id, user, update.message.date)
         success_answer = create_user_answer_text(saved_json_obj)
         await context.bot.send_message(
             chat_id=update.effective_chat.id, text=success_answer, parse_mode="HTML"
         )
 
     except RefreshError:
-        os.remove(audio_file_path)
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="A sua autenticação foi revogada ou expirada. Autentique-se com <code>/auth</code> e tente novamente.",
             parse_mode="HTML",
         )
 
-    except Exception as e:
+    finally:
+        logger.info(f"[Audio] Apagando arquivo de áudio: {audio_file_path}")
         os.remove(audio_file_path)
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"😢 Desculpe, houve um erro: {e}",
-            parse_mode="HTML",
-        )
 
 
-def process_audio_file(audio_file_path: str, user_id: str, user_config: dict) -> dict:
+def process_audio_file(audio_file_path: str, user_id: str, user: User, msg_date) -> dict:
     """
     Envia o áudio para o Whisper, depois para o agente que cria o JSON, salva no Google Planilhas e apaga o arquivo do áudio.
     Retorna o payload salvo.
@@ -186,26 +195,23 @@ def process_audio_file(audio_file_path: str, user_id: str, user_config: dict) ->
     logger.info("[Audio] Processando áudio...")
     speech_to_text = groq_whisper(audio_file_path)
 
-    payload = process_groq_and_save_to_spreadsheet(speech_to_text, user_id, user_config)
-
-    logger.info(f"[Audio] Apagando arquivo de áudio: {audio_file_path}")
-    os.remove(audio_file_path)
+    payload = process_groq_and_save_to_spreadsheet(speech_to_text, user_id, user, msg_date)
 
     return payload
 
 
 def process_groq_and_save_to_spreadsheet(
-    speech_to_text: str, user_id: str, user_config: dict
+    speech_to_text: str, user_id: str, user: User, msg_date
 ) -> dict:
     """
     Recebe o texto da compra, envia para o Groq, que transforma em um JSON, e salva-o no Google Planilhas.
     Retorna o payload salvo.
     """
-    raw_json_data = groq_buy_data_to_json(speech_to_text)
+    raw_json_data = groq_buy_data_to_json(speech_to_text, msg_date)
     payload = loads(raw_json_data)
 
     logger.info("[Spreadsheets] Salvando registro na tabela do Google Planilhas...")
-    save_data_to_spreadsheet(payload, user_id, user_config)
+    save_data_to_spreadsheet(payload, user_id, user)
     return payload
 
 
@@ -279,26 +285,19 @@ async def resume_command(update, context):
         return
 
     month = _resolve_month(context.args)
-    try:
-        answer_general, answer_top_costs = get_monthly_resume(user, user_id, month)
+    answer_general, answer_top_costs = get_monthly_resume(user, user_id, month)
 
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=answer_general,
-            parse_mode="HTML",
-        )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=answer_general,
+        parse_mode="HTML",
+    )
 
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=answer_top_costs,
-            parse_mode="HTML",
-        )
-    except Exception as e:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"Desculpe, mas houve um erro ao retornar o seu resumo mensal.\n\nDetalhes do erro:\n{e}",
-            parse_mode="HTML",
-        )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=answer_top_costs,
+        parse_mode="HTML",
+    )
 
 
 def _resolve_month(args):
@@ -415,8 +414,8 @@ async def start_command(update, context):
 @retry_on_error()
 async def note_command(update, context):
     user_id = str(update.effective_user.id)
-    user_config = await _validate_and_get_user(context, update)
-    if not user_config:
+    user = await _validate_and_get_user(context, update)
+    if not user:
         return
 
     if not await _validate_has_google_credentials(context, update):
@@ -433,7 +432,7 @@ async def note_command(update, context):
         return
 
     saved_json_obj: dict = process_groq_and_save_to_spreadsheet(
-        text_message, user_id, user_config
+        text_message, user_id, user, update.message.date
     )
     success_answer = create_user_answer_text(saved_json_obj)
     await context.bot.send_message(

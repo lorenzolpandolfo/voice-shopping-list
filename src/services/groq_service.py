@@ -43,7 +43,7 @@ def groq_whisper(filename):
     return transcription.text
 
 
-def groq_buy_data_to_json(content: str):
+def groq_buy_data_to_json(content: str, msg_date):
     logger.info(
         f"[JSON Agent] Enviando ao agente {MODEL} a frase transcrita do áudio: {content}"
     )
@@ -53,7 +53,7 @@ def groq_buy_data_to_json(content: str):
                 "role": "user",
                 "content": AGENT_CONTEXT.replace(
                     MASK_CURRENT_DATE,
-                    datetime.now(ZoneInfo(DEFAULT_TIMEZONE)).isoformat(),
+                    str(msg_date.astimezone()),
                 )
                 + content,
             }
