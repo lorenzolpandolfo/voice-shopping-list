@@ -4,6 +4,7 @@ import requests
 from google.auth.transport import requests as greq
 from google.oauth2.credentials import Credentials
 
+from src.api.utils.encrypt import encrypt, decrypt
 from src.api.model.user_model import User
 from src.api.repository.user_repository import UserRepository
 
@@ -71,8 +72,7 @@ def finish_device_auth(user_id: str) -> Credentials | None:
     if not user:
         raise Exception("Usuário não autorizado para cadastro")
 
-    user.token = creds.to_json()
-    user_repo.update(user)
+    __update_user_token(user, creds)
 
     return creds
 
@@ -85,14 +85,21 @@ def get_user_credentials_google(user_id: str) -> Credentials | None:
     if user is None or not user.token:
         return None
 
+    user_token = decrypt(user.token)
+
     creds: Credentials = Credentials.from_authorized_user_info(
-        json.loads(user.token), SCOPES
+        json.loads(user_token), SCOPES
     )
 
     if creds.expired and creds.refresh_token:
         creds.refresh(greq.Request())
 
-        user.token = creds.to_json()
-        user_repo.update(user)
+        __update_user_token(user, creds)
 
     return creds
+
+
+def __update_user_token(user: User, token: Credentials) -> User:
+    user.token = encrypt(token.to_json())
+    user_repo.update(user)
+    return user

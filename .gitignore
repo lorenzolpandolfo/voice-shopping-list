@@ -212,3 +212,7 @@ client_secret.json
 user_tokens/*
 /script.sql
 *.db
+*.db-shm
+*.db-wal
+.idea/
+key.bin
