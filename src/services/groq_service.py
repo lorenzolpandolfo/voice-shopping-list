@@ -1,7 +1,5 @@
 import os
-from datetime import datetime
 from logging import getLogger
-from zoneinfo import ZoneInfo
 import locale
 from dotenv import load_dotenv
 
@@ -11,7 +9,6 @@ from groq import Groq
 from src.constants.constants import (
     AGENT_CONTEXT,
     MASK_CURRENT_DATE,
-    DEFAULT_TIMEZONE,
     DEFAULT_LOCALE,
 )
 

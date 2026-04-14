@@ -216,3 +216,4 @@ user_tokens/*
 *.db-wal
 .idea/
 key.bin
+audios/

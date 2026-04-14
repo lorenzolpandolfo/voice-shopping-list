@@ -31,6 +31,8 @@ from src.services.google_oauth_service import (
 
 load_dotenv()
 logger = getLogger(__name__)
+
+MAX_AUDIO_TIME_SECONDS = 6
 TELEGRAM_BOT_API_KEY = os.getenv("TELEGRAM_BOT_API_KEY")
 
 REPO_URL = "https://github.com/lorenzolpandolfo/voice-shopping-list"
@@ -43,6 +45,9 @@ FUNNY_INTERACTIONS = [
 ]
 
 user_repo = UserRepository()
+
+audios_dir_path = os.path.join(os.getcwd(), "audios")
+os.makedirs(audios_dir_path, exist_ok=True)
 
 
 def send_typing_action(func):
@@ -137,18 +142,31 @@ async def _validate_and_get_user(
 async def receive_and_process_audio_file(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
+    max_size_err_msg = f"O áudio não pode exceder {MAX_AUDIO_TIME_SECONDS} segundos de duração. Seja mais direto ao anotar o gasto 🤑"
+
     if update.message.voice:
         file_id = update.message.voice.file_id
         ext = "ogg"
-        if update.message.voice.duration >= 10:
-            raise ValueError("o áudio não deve exceder 10 segundos de duração.")
+
+        if update.message.voice.duration >= MAX_AUDIO_TIME_SECONDS:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=max_size_err_msg,
+                parse_mode="HTML",
+            )
+            return
 
     elif update.message.audio:
         file_id = update.message.audio.file_id
         ext = "mp3"
 
-        if update.message.audio.duration >= 10:
-            raise ValueError("o áudio não deve exceder 10 segundos de duração.")
+        if update.message.audio.duration >= MAX_AUDIO_TIME_SECONDS:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=max_size_err_msg,
+                parse_mode="HTML",
+            )
+            return
 
     else:
         return
@@ -162,13 +180,15 @@ async def receive_and_process_audio_file(
         return
 
     file = await context.bot.get_file(file_id)
-    audio_file_path = os.path.join(os.getcwd(), f"audios/{file_id}.{ext}")
+    audio_dir = os.path.join(audios_dir_path, f"{file_id}.{ext}")
 
-    logger.info(f"[Telegram] Salvando áudio em {audio_file_path}")
-    await file.download_to_drive(audio_file_path)
+    logger.info(f"[Telegram] Salvando áudio em {audio_dir}")
+    await file.download_to_drive(audio_dir)
 
     try:
-        saved_json_obj: dict = process_audio_file(audio_file_path, user_id, user, update.message.date)
+        saved_json_obj: dict = process_audio_file(
+            audio_dir, user_id, user, update.message.date
+        )
         success_answer = create_user_answer_text(saved_json_obj)
         await context.bot.send_message(
             chat_id=update.effective_chat.id, text=success_answer, parse_mode="HTML"
@@ -182,11 +202,13 @@ async def receive_and_process_audio_file(
         )
 
     finally:
-        logger.info(f"[Audio] Apagando arquivo de áudio: {audio_file_path}")
-        os.remove(audio_file_path)
+        logger.info(f"[Audio] Apagando arquivo de áudio: {audio_dir}")
+        os.remove(audio_dir)
 
 
-def process_audio_file(audio_file_path: str, user_id: str, user: User, msg_date) -> dict:
+def process_audio_file(
+    audio_file_path: str, user_id: str, user: User, msg_date
+) -> dict:
     """
     Envia o áudio para o Whisper, depois para o agente que cria o JSON, salva no Google Planilhas e apaga o arquivo do áudio.
     Retorna o payload salvo.
@@ -195,7 +217,9 @@ def process_audio_file(audio_file_path: str, user_id: str, user: User, msg_date)
     logger.info("[Audio] Processando áudio...")
     speech_to_text = groq_whisper(audio_file_path)
 
-    payload = process_groq_and_save_to_spreadsheet(speech_to_text, user_id, user, msg_date)
+    payload = process_groq_and_save_to_spreadsheet(
+        speech_to_text, user_id, user, msg_date
+    )
 
     return payload
 
@@ -449,7 +473,7 @@ async def help_command(update, context):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=(
-            "🤖✌ Alguém aí tá precisando de uma ajuda? 🤑\n\n"
+            "Precisando de ajuda? 🤑\n\n"
             "<b>Conta e Autenticação</b>\n"
             "Para checar o status da sua conta e autenticação, use\n"
             "<code>/start</code>\n\n\n"
