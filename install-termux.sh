@@ -22,8 +22,29 @@ fi
 echo "Etapa 3/6 - Preparando Ubuntu"
 proot-distro login ubuntu -- bash -c "
 set -e
+
+export DEBIAN_FRONTEND=noninteractive
+
 apt update -y > /dev/null
-apt install git build-essential python3-venv python3-pip curl pkg-config libssl-dev -y > /dev/null
+apt install -y \
+    git \
+    build-essential \
+    python3-venv \
+    python3-pip \
+    python3-dev \
+    curl \
+    pkg-config \
+    libssl-dev \
+    libffi-dev \
+    locales \
+    tzdata > /dev/null
+
+echo 'Gerando locale pt_BR.UTF-8'
+locale-gen pt_BR.UTF-8 > /dev/null
+update-locale LANG=pt_BR.UTF-8
+
+export LANG=pt_BR.UTF-8
+export LC_ALL=pt_BR.UTF-8
 "
 
 echo "Etapa 4/6 - Projeto e dependências"
