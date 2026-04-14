@@ -1,3 +1,4 @@
+import asyncio
 import os
 import random
 from datetime import datetime
@@ -57,6 +58,29 @@ def send_typing_action(func):
     return command_func
 
 
+def retry_on_error(retries=3, delay=1, exceptions=(Exception,)):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_exc = None
+
+            for attempt in range(retries):
+                try:
+                    return await func(*args, **kwargs)
+                except exceptions as e:
+                    last_exc = e
+                    logger.error(f"attempt {attempt + 1} failed: {e}")
+
+                    if attempt < retries - 1:
+                        await asyncio.sleep(delay)
+
+            raise last_exc
+
+        return wrapper
+
+    return decorator
+
+
 async def _validate_has_google_credentials(
     context, update, send_message_on_error: bool = True
 ) -> bool:
@@ -102,6 +126,7 @@ async def _validate_and_get_user(
 
 
 @send_typing_action
+@retry_on_error()
 async def receive_and_process_audio_file(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
@@ -214,6 +239,7 @@ def create_user_answer_text(saved_json_obj: dict) -> str:
 
 
 @send_typing_action
+@retry_on_error()
 async def auth_command(update, context):
     user_id = str(update.effective_user.id)
 
@@ -244,6 +270,7 @@ async def auth_command(update, context):
 
 
 @send_typing_action
+@retry_on_error()
 async def resume_command(update, context):
     user_id = str(update.effective_user.id)
     user = await _validate_and_get_user(context, update)
@@ -297,6 +324,7 @@ def _resolve_month(args):
 
 
 @send_typing_action
+@retry_on_error()
 async def finish_auth_on_message(update, context):
     if not await _validate_and_get_user(context, update):
         return
@@ -329,6 +357,7 @@ async def finish_auth_on_message(update, context):
 
 
 @send_typing_action
+@retry_on_error()
 async def start_command(update, context):
 
     await context.bot.send_message(
@@ -383,6 +412,7 @@ async def start_command(update, context):
 
 
 @send_typing_action
+@retry_on_error()
 async def note_command(update, context):
     user_id = str(update.effective_user.id)
     user_config = await _validate_and_get_user(context, update)
@@ -412,6 +442,7 @@ async def note_command(update, context):
 
 
 @send_typing_action
+@retry_on_error()
 async def help_command(update, context):
     if not await _validate_and_get_user(context, update):
         return

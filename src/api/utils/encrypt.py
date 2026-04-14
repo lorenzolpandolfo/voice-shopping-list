@@ -1,8 +1,11 @@
+import json
 import os
+from typing import Any
 
 from cryptography.fernet import Fernet
 
 KEY_FILE = "key.bin"
+CLIENT_SECRET_FILE = "client_secret.json"
 READONLY_PERMISSION = 0o600
 
 if not os.path.exists(KEY_FILE):
@@ -23,3 +26,22 @@ def encrypt(o: str) -> str:
 
 def decrypt(o: str) -> str:
     return _f.decrypt(o.encode()).decode()
+
+
+def load_client_secret() -> tuple[Any, Any]:
+    """Encrypt client_secret.json if it is not encrypted, and return its data."""
+    with open(CLIENT_SECRET_FILE, "r") as f:
+        raw = f.read()
+
+    try:
+        decrypted = decrypt(raw)
+        content = decrypted
+    except Exception:
+        encrypted = encrypt(raw)
+        with open(CLIENT_SECRET_FILE, "w") as f:
+            f.write(encrypted)
+        content = raw
+
+    data = json.loads(content)["installed"]
+
+    return data["client_id"], data["client_secret"]

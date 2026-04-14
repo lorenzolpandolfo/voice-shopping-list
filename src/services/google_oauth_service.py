@@ -4,7 +4,7 @@ import requests
 from google.auth.transport import requests as greq
 from google.oauth2.credentials import Credentials
 
-from src.api.utils.encrypt import encrypt, decrypt
+from src.api.utils.encrypt import encrypt, decrypt, load_client_secret
 from src.api.model.user_model import User
 from src.api.repository.user_repository import UserRepository
 
@@ -13,10 +13,7 @@ START_AUTH_URL = "https://oauth2.googleapis.com/device/code"
 FINISH_AUTH_URL = "https://oauth2.googleapis.com/token"
 
 
-with open("client_secret.json") as f:
-    data = json.load(f)["installed"]
-    _client_id = data["client_id"]
-    _client_secret = data["client_secret"]
+_client_id, _client_secret = load_client_secret()
 
 _user_device_codes_to_finish = {}
 
