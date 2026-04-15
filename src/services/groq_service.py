@@ -1,6 +1,8 @@
 import os
 from logging import getLogger
 import locale
+from zoneinfo import ZoneInfo
+
 from dotenv import load_dotenv
 
 
@@ -10,6 +12,7 @@ from src.constants.constants import (
     AGENT_CONTEXT,
     MASK_CURRENT_DATE,
     DEFAULT_LOCALE,
+    DEFAULT_TIMEZONE
 )
 
 load_dotenv()
@@ -50,7 +53,7 @@ def groq_buy_data_to_json(content: str, msg_date):
                 "role": "user",
                 "content": AGENT_CONTEXT.replace(
                     MASK_CURRENT_DATE,
-                    str(msg_date.astimezone()),
+                    f"{msg_date.astimezone(ZoneInfo(DEFAULT_TIMEZONE))}",
                 )
                 + content,
             }
