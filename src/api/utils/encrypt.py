@@ -2,7 +2,7 @@ import json
 import os
 from typing import Any
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 KEY_FILE = "key.bin"
 CLIENT_SECRET_FILE = "client_secret.json"
@@ -25,7 +25,11 @@ def encrypt(o: str) -> str:
 
 
 def decrypt(o: str) -> str:
-    return _f.decrypt(o.encode()).decode()
+    try:
+        return _f.decrypt(o.encode()).decode()
+
+    except InvalidToken:
+        return o
 
 
 def load_client_secret() -> tuple[Any, Any]:
