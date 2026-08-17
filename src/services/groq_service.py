@@ -23,18 +23,21 @@ client = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
 
-MODEL = "llama-3.1-8b-instant"
-WHISPER_MODEL = "whisper-large-v3-turbo"
+JSON_AGENT =  os.environ.get("JSON_AGENT") or "openai/gpt-oss-20b"
+WHISPER_AGENT = os.environ.get("WHISPER_AGENT") or "whisper-large-v3-turbo"
 
+
+logger.info(JSON_AGENT, WHISPER_AGENT)
 
 def groq_whisper(filename):
-    logger.info("[Whisper] Enviando o áudio para o agente...")
+    logger.info(f"[Whisper Agent] Enviando o áudio para o agente {WHISPER_AGENT}...")
     with open(filename, "rb") as file:
         transcription = client.audio.transcriptions.create(
             file=(filename, file.read()),
-            model="whisper-large-v3-turbo",
+            model=WHISPER_AGENT,
             temperature=0,
             response_format="verbose_json",
+            language="pt",
         )
 
     logger.info(
@@ -45,7 +48,7 @@ def groq_whisper(filename):
 
 def groq_buy_data_to_json(content: str, msg_date):
     logger.info(
-        f"[JSON Agent] Enviando ao agente {MODEL} a frase transcrita do áudio: {content}"
+        f"[JSON Agent] Enviando ao agente {JSON_AGENT} a frase transcrita do áudio: {content}"
     )
     chat_completion = client.chat.completions.create(
         messages=[
@@ -58,8 +61,8 @@ def groq_buy_data_to_json(content: str, msg_date):
                 + content,
             }
         ],
-        model=MODEL,
-        temperature=0.1,
+        model=JSON_AGENT,
+        temperature=0,
     )
     answer = chat_completion.choices[0].message.content
     logger.info(f"[JSON Agent] Resposta: {answer}")
