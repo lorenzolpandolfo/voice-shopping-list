@@ -50,13 +50,16 @@ def groq_buy_data_to_json(content: str, msg_date):
     logger.info(
         f"[JSON Agent] Enviando ao agente {JSON_AGENT} a frase transcrita do áudio: {content}"
     )
+
+    msg_date = str(msg_date.astimezone(ZoneInfo(DEFAULT_TIMEZONE)))[:-6]
+
     chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "user",
                 "content": AGENT_CONTEXT.replace(
                     MASK_CURRENT_DATE,
-                    f"{msg_date.astimezone(ZoneInfo(DEFAULT_TIMEZONE))}",
+                    f"{msg_date}",
                 )
                 + content,
             }
