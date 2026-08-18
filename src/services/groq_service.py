@@ -12,7 +12,7 @@ from src.constants.constants import (
     AGENT_CONTEXT,
     MASK_CURRENT_DATE,
     DEFAULT_LOCALE,
-    DEFAULT_TIMEZONE
+    DEFAULT_TIMEZONE,
 )
 
 load_dotenv()
@@ -23,11 +23,9 @@ client = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
 
-JSON_AGENT =  os.environ.get("JSON_AGENT") or "openai/gpt-oss-20b"
+JSON_AGENT = os.environ.get("JSON_AGENT") or "openai/gpt-oss-20b"
 WHISPER_AGENT = os.environ.get("WHISPER_AGENT") or "whisper-large-v3-turbo"
 
-
-logger.info(JSON_AGENT, WHISPER_AGENT)
 
 def groq_whisper(filename):
     logger.info(f"[Whisper Agent] Enviando o áudio para o agente {WHISPER_AGENT}...")
